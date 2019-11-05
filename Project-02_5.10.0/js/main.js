@@ -14,6 +14,8 @@ console.log("transform", "translate(" + margin.left + "," + margin.top +")");
 var height = completeHeight - margin.top - margin.bottom;
 	width = completeWidth - margin.left - margin.right;
 
+var time = 0;
+
 //= create a group that is positioned at begining of the drawing area
 var g = d3.select("#chart-area")
 	.append("svg")
@@ -52,11 +54,16 @@ var x = d3.scaleLog()
 	.range([0, width]);
 //- life expenctancy
 var y = d3.scaleLinear()
-	.domain([0, 90])
-	.range([height, 0]);
+.range([height, 0])
+.domain([0, 90]);
+//= quando a população crescer 100x, 
+//= a área tb cresce 100x, mas o raio cresce apenas 10x
+var area = d3.scaleLinear()
+	.domain([2e+3, 1.4e+9])
+	.range([25*Math.PI, 1500]); //-raios de 5 a 39 pixels eu acho
+var continentColor = d3.scaleOrdinal(d3.schemePastel1);
 
 // Axis
-
 var baseGDPTick = 150;
 var numOfTicks = 4;
 var xTicksToShow = [baseGDPTick];
@@ -72,25 +79,68 @@ g.append("g")
 	.call(xAxisCall);
 
 var yAxisCall = d3.axisLeft(y)
-	//.tickFormat(d3.format("$"));
+	.tickFormat((d)=>{return +d;});
 g.append("g")
-	.attr("class", "x axis")
+	.attr("class", "y axis")
 	.attr("transform", "translate(0," + height + ")")
-	.call(xAxisCall);
+	.call(yAxisCall);
 
 
 var dataPromise = d3.json("data/data.json")
 
 dataPromise.then(function(data){
-	console.log(data);
+	//console.log(data);
 
-	var yData = data[0].countries;
-	// console.log(yData);
-	// yData.forEach(element => {
-	// 	console.log(element.income);
-	// });
+	const validatedData = data.map(
+	(year)=>{
+		return year.countries.filter(
+			(country)=>{
+				dataExist = country.income && country.life_exp;
+				return dataExist;
+			})
+	}).map(
+		(country)=>{
+			country.income = +country.income;
+			country.life_exp = +country.life_exp;
+			return country;
+		});
+	//console.log(validatedData);
+
+	d3.interval(()=>{
+		time++;
+		if(time >= validatedData.lenght) time = 0;
+
+		PaymentRequestUpdateEvent(validatedData[time]);
+	},100);
+
+	//!First time, since the interval callback will just be called at the end of 100ms
+	update(validatedData[0]);
 
 	//! mínimo global das taxas obtido com dois d3.min incadiados
 	//console.log(	d3.min(data, (d)=>{return 	d3.min(d.countries, (d)=>{return	d.income	 ;})	;})	);
 	
-});
+})
+.catch((error)=>{console.log(error);});
+
+function update(data)
+{
+	var t = d3.transition()
+		.duration(100);
+
+	var circles = d3.selectAll("circle")
+		.data(data, (d)=>{return d.country;});
+
+	circles.exit()
+		.attr("class", "exit")
+		.remove();
+
+	circles.enter()
+		.append("circle")
+		.attr("class", "enter")
+		.attr("fill", (d)=>{return continentColor(d.continent);})
+		//! a partir deste ponto tudo é aplicado para todos os elementos (os países que estavam no ano anterior e os que foram adicionados neste ano)
+		//! assim, deve-se colocar apenas o que muda de um ano para o outro
+		.merge(circles)
+		.transition(t)
+			.attr("cy", (d)=>{return height-y(d.life_exp);})
+}
