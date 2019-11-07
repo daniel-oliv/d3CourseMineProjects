@@ -9,7 +9,6 @@ var completeHeight = 500;
 
 //= left and top are bigger to comport axis' labels
 var margin = { left: 80, right: 20, top:50, bottom: 100 };
-console.log("transform", "translate(" + margin.left + "," + margin.top +")");
 //= drawing area dimensions
 var height = completeHeight - margin.top - margin.bottom;
 	width = completeWidth - margin.left - margin.right;
@@ -60,12 +59,12 @@ var y = d3.scaleLinear()
 //= a área tb cresce 100x, mas o raio cresce apenas 10x
 var area = d3.scaleLinear()
 	.domain([2e+3, 1.4e+9])
-	.range([25*Math.PI, 1500]); //-raios de 5 a 39 pixels eu acho
+	.range([25*Math.PI, 1500*Math.PI]); //-raios de 5 a 39 pixels eu acho
 var continentColor = d3.scaleOrdinal(d3.schemePastel1);
 
 // Axis
-var baseGDPTick = 150;
-var numOfTicks = 4;
+var baseGDPTick = 400;
+var numOfTicks = 3;
 var xTicksToShow = [baseGDPTick];
 for (let index = 1; index < numOfTicks; index++) {
 	xTicksToShow.push(xTicksToShow[index-1]*10);
@@ -75,14 +74,14 @@ var xAxisCall = d3.axisBottom(x)
 	.tickFormat(d3.format("$"));
 g.append("g")
 	.attr("class", "x axis")
-	.attr("transform", "translate(0," + height + ")")
+	.attr("transform", "translate(0," + height +")")
 	.call(xAxisCall);
 
 var yAxisCall = d3.axisLeft(y)
 	.tickFormat((d)=>{return +d;});
 g.append("g")
 	.attr("class", "y axis")
-	.attr("transform", "translate(0," + height + ")")
+	//.attr("transform", "translate(0," + height + ")")
 	.call(yAxisCall);
 
 
@@ -104,13 +103,14 @@ dataPromise.then(function(data){
 			country.life_exp = +country.life_exp;
 			return country;
 		});
-	//console.log(validatedData);
+	//console.log("validatedData", validatedData);
+	//console.log("validatedData len", validatedData.length);
 
 	d3.interval(()=>{
 		time++;
-		if(time >= validatedData.lenght) time = 0;
+		if(time >= validatedData.length) time = 0;
 
-		PaymentRequestUpdateEvent(validatedData[time]);
+		update(validatedData[time]);
 	},100);
 
 	//!First time, since the interval callback will just be called at the end of 100ms
@@ -124,10 +124,11 @@ dataPromise.then(function(data){
 
 function update(data)
 {
+	//console.log("time", time)
 	var t = d3.transition()
 		.duration(100);
 
-	var circles = d3.selectAll("circle")
+	var circles = g.selectAll("circle")
 		.data(data, (d)=>{return d.country;});
 
 	circles.exit()
@@ -142,5 +143,9 @@ function update(data)
 		//! assim, deve-se colocar apenas o que muda de um ano para o outro
 		.merge(circles)
 		.transition(t)
-			.attr("cy", (d)=>{return height-y(d.life_exp);})
+			.attr("cy", (d)=>{return y(d.life_exp);})
+			.attr("cx", (d)=>{return x(d.income);})
+			.attr("r", (d)=>{return Math.sqrt(area(d.population) / Math.PI);});
+
+			timeLabel.text(time + 1800);
 }
