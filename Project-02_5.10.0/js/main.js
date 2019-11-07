@@ -21,7 +21,7 @@ var g = d3.select("#chart-area")
 		.attr("width", completeWidth)
 		.attr("height", completeHeight)
 	.append("g")
-	.attr("transform", "translate(" + margin.left + "," + margin.top +")");
+		.attr("transform", "translate(" + margin.left + "," + margin.top +")");
 
 // Labels
 var xLabel = g.append("text")
@@ -84,9 +84,24 @@ g.append("g")
 	//.attr("transform", "translate(0," + height + ")")
 	.call(yAxisCall);
 
+var continents = ["europe", "asia", "americas", "africa"];
+
+var legend = g.append("g")
+	.attr("transform", "translate(" + (width - 10) + "," + (height - 125) + ")");
+	
+	continents.forEach((continent, i)=>{
+		var legendRow = legend.append("g")
+			.attr("transform", "translate(0," + (i * 20) + ")");
+
+			legendRow.append("rect")
+				.attr("width", 10)
+				.attr("height", 10)
+				.attr("fill", continentColor(continent));
+	});
+
 
 var dataPromise = d3.json("data/data.json")
-
+/*
 dataPromise.then(function(data){
 	//console.log(data);
 
@@ -148,4 +163,4 @@ function update(data)
 			.attr("r", (d)=>{return Math.sqrt(area(d.population) / Math.PI);});
 
 			timeLabel.text(time + 1800);
-}
+}*/
