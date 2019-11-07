@@ -23,6 +23,15 @@ var g = d3.select("#chart-area")
 	.append("g")
 		.attr("transform", "translate(" + margin.left + "," + margin.top +")");
 
+
+// Tooltip
+var tip = d3.tip().attr("class", "d3-tip")
+	.html((d)=>{
+		var text = "<strong>Country</strong> <span style='color:red;'>" + d.country + "</span><br>";
+		return text;
+	});
+g.call(tip);
+
 // Labels
 var xLabel = g.append("text")
 	.attr("x", width / 2 )
@@ -161,6 +170,8 @@ function update(data)
 		.append("circle")
 		.attr("class", "enter")
 		.attr("fill", (d)=>{return continentColor(d.continent);})
+		.on("mouseover", tip.show)
+		.on("mouseout", tip.hide)
 		//! a partir deste ponto tudo é aplicado para todos os elementos (os países que estavam no ano anterior e os que foram adicionados neste ano)
 		//! assim, deve-se colocar apenas o que muda de um ano para o outro
 		.merge(circles)
