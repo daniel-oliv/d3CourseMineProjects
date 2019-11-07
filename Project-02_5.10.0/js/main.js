@@ -97,11 +97,18 @@ var legend = g.append("g")
 				.attr("width", 10)
 				.attr("height", 10)
 				.attr("fill", continentColor(continent));
+
+			legendRow.append("text")
+				.attr("x", -10)
+				.attr("y", 10)
+				.attr("text-anchor", "end")
+				.style("text-transform", "capitalize")
+				.text(continent);
 	});
 
 
 var dataPromise = d3.json("data/data.json")
-/*
+
 dataPromise.then(function(data){
 	//console.log(data);
 
@@ -163,4 +170,4 @@ function update(data)
 			.attr("r", (d)=>{return Math.sqrt(area(d.population) / Math.PI);});
 
 			timeLabel.text(time + 1800);
-}*/
+}
