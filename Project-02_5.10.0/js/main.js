@@ -14,6 +14,8 @@ var height = completeHeight - margin.top - margin.bottom;
 	width = completeWidth - margin.left - margin.right;
 
 var time = 0;
+var interval;
+var validatedData;
 
 //= create a group that is positioned at begining of the drawing area
 var g = d3.select("#chart-area")
@@ -97,6 +99,7 @@ g.append("g")
 	//.attr("transform", "translate(0," + height + ")")
 	.call(yAxisCall);
 
+//= Legend
 var continents = ["europe", "asia", "americas", "africa"];
 
 var legend = g.append("g")
@@ -120,12 +123,13 @@ var legend = g.append("g")
 	});
 
 
+//=Reading data
 var dataPromise = d3.json("data/data.json")
 
 dataPromise.then(function(data){
 	//console.log(data);
 
-	const validatedData = data.map(
+	validatedData = data.map(
 	(year)=>{
 		return year.countries.filter(
 			(country)=>{
@@ -141,13 +145,6 @@ dataPromise.then(function(data){
 	//console.log("validatedData", validatedData);
 	//console.log("validatedData len", validatedData.length);
 
-	d3.interval(()=>{
-		time++;
-		if(time >= validatedData.length) time = 0;
-
-		update(validatedData[time]);
-	},100);
-
 	//!First time, since the interval callback will just be called at the end of 100ms
 	update(validatedData[0]);
 
@@ -160,11 +157,21 @@ dataPromise.then(function(data){
 function update(data)
 {
 	//console.log("time", time)
+
+	var continent = $("#continent-select").val();
+	//console.log(continent);
+	var filtered = data.filter((d)=>{
+		if(continent === "all"){
+			return true;
+		}else{
+			return d.continent === continent
+		}
+	});
 	var t = d3.transition()
 		.duration(100);
 
 	var circles = g.selectAll("circle")
-		.data(data, (d)=>{return d.country;});
+		.data(filtered, (d)=>{return d.country;});
 
 	circles.exit()
 		.attr("class", "exit")
@@ -185,4 +192,50 @@ function update(data)
 			.attr("r", (d)=>{return Math.sqrt(area(d.population) / Math.PI);});
 
 			timeLabel.text(time + 1800);
+			$("#year")[0].innerHTML = +(time + 1800);
+
+			$("#date-slider").slider("value", +(time + 1800));
+}
+
+$("#play-button")
+	.on("click", function(){
+		//console.log($(this).text());		
+		var button = $(this);
+		if(button.text() == "Play")
+		{
+			button.text("Pause");
+			interval = setInterval(step, 100);
+		}
+		else{
+			button.text("Play");
+			clearInterval(interval);
+		}
+	});
+
+$("#reset-button")
+    .on("click", function(){
+        time = 0;
+        update(validatedData[0]);
+    })
+
+$("#continent-select")
+    .on("change", function(){
+        update(validatedData[time]);
+	})
+
+$("#date-slider").slider({
+	max: 2014,
+	min: 1800,
+	step: 1,
+	slide: function(event, ui){
+		time = ui.value - 1800;
+		update(validatedData[time]);
+	}
+})
+	
+function step()
+{
+	time++;
+	if(time >= validatedData.length) time = 0;
+	update(validatedData[time]);
 }
