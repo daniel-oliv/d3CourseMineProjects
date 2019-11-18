@@ -3,7 +3,7 @@
 *    Mastering Data Visualization with D3.js
 *    6.8 - Line graphs in D3
 */
-
+var filteredData;
 var margin = { left:80, right:100, top:50, bottom:100 },
     height = 500 - margin.top - margin.bottom, 
     width = 800 - margin.left - margin.right;
@@ -17,7 +17,8 @@ var g = svg.append("g")
         ", " + margin.top + ")");
 
 // Time parser for x-scale
-var parseTime = d3.timeParse("%Y");
+var parseTime = d3.timeParse("%d/%m/%Y");
+var formatTime = d3.formatParse("%d/%m/%Y");
 // For tooltip
 var bisectDate = d3.bisector(function(d) { return d.year; }).left;
 
@@ -53,13 +54,17 @@ var line = d3.line()
     .x(function(d) { return x(d.year); })
     .y(function(d) { return y(d.value); });
 
-d3.json("data/example.json").then(function(data) {
+d3.json("data/coins.json").then(function(data) {
+    console.log("data", data);
     // Data cleaning
-    data.forEach(function(d) {
-        d.year = parseTime(d.year);
-        d.value = +d.value;
-    });
-
+    filteredData = {};
+    for (const coin in data) {
+        if (data.hasOwnProperty(coin)) {
+            const element = data[coin];
+            
+        }
+    }
+    console.log("data", filteredData);
     // Set scale domains
     x.domain(d3.extent(data, function(d) { return d.year; }));
     y.domain([d3.min(data, function(d) { return d.value; }) / 1.005, 
