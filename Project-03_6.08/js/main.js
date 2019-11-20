@@ -20,7 +20,16 @@ var g = svg.append("g")
 var parseTime = d3.timeParse("%d/%m/%Y");
 var timeFormat = d3.timeFormat("%d/%m/%Y");
 // For tooltip
-var bisectDate = d3.bisector(function(d) { return d.year; }).left;
+var bisectDate = d3.bisector(function(d) { return d.date; }).left;
+
+var t = function(){ return d3.transition().duration(1000); }
+
+// Add line to chart
+g.append("path")
+    .attr("class", "line")
+    .attr("fill", "none")
+    .attr("stroke", "grey")
+    .attr("stroke-width", "3px");
 
 // Scales
 var x = d3.scaleTime().range([0, width]);
@@ -28,66 +37,62 @@ var y = d3.scaleLinear().range([height, 0]);
 
 // Axis generators
 var xAxisCall = d3.axisBottom()
-var yAxisCall = d3.axisLeft()
-    .ticks(6)
-    .tickFormat(function(d) { return parseInt(d / 1000) + "k"; });
+    .ticks(4);
+var yAxisCall = d3.axisLeft();
 
 // Axis groups
 var xAxis = g.append("g")
     .attr("class", "x axis")
     .attr("transform", "translate(0," + height + ")");
 var yAxis = g.append("g")
-    .attr("class", "y axis")
+    .attr("class", "y axis");
     
+// X-Axis label
+g.append("text")
+    .attr("class", "x axisLabel")
+    .attr("y", height + 50)
+    .attr("x", width / 2)
+    .attr("font-size", "20px")
+    .attr("text-anchor", "middle")
+    .text("Time");
 // Y-Axis label
-yAxis.append("text")
-    .attr("class", "axis-title")
+g.append("text")
+    .attr("class", "y axisLabel")
     .attr("transform", "rotate(-90)")
-    .attr("y", 6)
-    .attr("dy", ".71em")
-    .style("text-anchor", "end")
-    .attr("fill", "#5D6971")
-    .text("Population)");
+    .attr("y", -40)
+    .attr("x", -height/2)
+    .attr("font-size", "20px")
+    .style("text-anchor", "middle")
+    .text("Price (USD)");
 
 // Line path generator
-var line = d3.line()
-    .x(function(d) { return x(d.year); })
-    .y(function(d) { return y(d.value); });
+// var line = d3.line();
+    // .x(function(d) { return x(d.date); })
+    // .y(function(d) { return y(d[selectedAttribute]); });
 
-d3.json("data/coins.json").then(function(data) {
-    console.log("data ", data);
-    // Data cleaning
-    filteredData = {};
-    for (const coin in data) {
-        //! Usado para evitar criar uma propriedade que não exitia antes
-        //= hasOwnProperty retorna true se o obj possui a propriedade passada como parâmetro (exceto herdada, como toString) 
-        if (data.hasOwnProperty(coin)) {
-            const element = data[coin];
-            
-        }
-        else{console.error("then(function(data) - propriedade inválida", coin)}
+// Event listeners
+$("#coin-select").on("change", function(){update();})
+$("#var-select").on("change", function(){update();})
+
+// Add jQuery UI slider
+$("#date-slider").slider({
+    range: true,
+    max: parseTime("31/10/2017").getTime(),
+    min: parseTime("12/5/2013").getTime(),
+    step: 86400000, // One day
+    values: [parseTime("12/5/2013").getTime(), parseTime("31/10/2017").getTime()],
+    slide: function(event, ui){
+        $("#dateLabel1").text(timeFormat(new Date(ui.values[0])));
+        $("#dateLabel2").text(timeFormat(new Date(ui.values[1])));
+        var dateValues = $("#date-slider").slider("values");
+        //console.log("dateValues ", timeFormat(dateValues[0]) );
+        //console.log("ui values ", timeFormat(ui.values[0]) );
+        update(ui.values);
     }
-    console.log("filteredData ", filteredData);
-    // Set scale domains
-    x.domain(d3.extent(data, function(d) { return d.year; }));
-    y.domain([d3.min(data, function(d) { return d.value; }) / 1.005, 
-        d3.max(data, function(d) { return d.value; }) * 1.005]);
+});
 
-    // Generate axes once scales have been set
-    xAxis.call(xAxisCall.scale(x))
-    yAxis.call(yAxisCall.scale(y))
-
-    // Add line to chart
-    g.append("path")
-        .attr("class", "line")
-        .attr("fill", "none")
-        .attr("stroke", "grey")
-        .attr("stroke-with", "3px")
-        .attr("d", line(data));
-
-    /******************************** Tooltip Code ********************************/
-
-    var focus = g.append("g")
+/******************************** Tooltip Initialization Code ********************************/
+var focus = g.append("g")
         .attr("class", "focus")
         .style("display", "none");
 
@@ -108,28 +113,129 @@ d3.json("data/coins.json").then(function(data) {
         .attr("x", 15)
         .attr("dy", ".31em");
 
-    g.append("rect")
+var overlay =  svg.append("rect")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
         .attr("class", "overlay")
         .attr("width", width)
         .attr("height", height)
-        .on("mouseover", function() { focus.style("display", null); })
-        .on("mouseout", function() { focus.style("display", "none"); })
-        .on("mousemove", mousemove);
+overlay  
+    .on("mouseover", function() { focus.style("display", null); })
+    .on("mouseout", function() { focus.style("display", "none"); })
+    
 
-    function mousemove() {
-        var x0 = x.invert(d3.mouse(this)[0]),
-            i = bisectDate(data, x0, 1),
-            d0 = data[i - 1],
-            d1 = data[i],
-            d = x0 - d0.year > d1.year - x0 ? d1 : d0;
-        focus.attr("transform", "translate(" + x(d.year) + "," + y(d.value) + ")");
-        focus.select("text").text(d.value);
-        focus.select(".x-hover-line").attr("y2", height - y(d.value));
-        focus.select(".y-hover-line").attr("x2", -x(d.year));
+d3.json("data/coins.json").then(function(data) {
+    //console.log("data ", data);
+
+    // getting the keys
+    for (const coin in data) {
+        //! Usado para evitar manipular uma propriedade herdada como o toString ou outra coisa kkkk
+        //= hasOwnProperty retorna true se o obj possui a propriedade passada como parâmetro (exceto herdada, como toString) 
+        if (!data.hasOwnProperty(coin)) {
+            //! se não é uma coin, isto é, uma propriedade do obj não herdada,
+            //! pula para a próxima propriedade do objeto 
+            continue;
+        }
+        var coinKeys = d3.keys(data[coin][0]).filter((d)=>{return d != "date"});
+        //console.log(coinKeys);
+        break;
     }
 
+    // Data cleaning
+    filteredData = {};
+    for (const coin in data) {
+        //! Usado para evitar manipular uma propriedade herdada como o toString ou outra coisa kkkk
+        //= hasOwnProperty retorna true se o obj possui a propriedade passada como parâmetro (exceto herdada, como toString) 
+        if (!data.hasOwnProperty(coin)) {
+            //! se não é uma coin, isto é, uma propriedade do obj não herdada,
+            //! pula para a próxima propriedade do objeto 
+            continue;
+        }
+        filteredData[coin] = data[coin].filter((d)=>{
+            return !(d["price_usd"] == null);
+        });
 
-    /******************************** Tooltip Code ********************************/
+        filteredData[coin].forEach(d => {
+            //= transformando em números
+            for (const key of coinKeys) {
+                d[key] = +d[key];
+            }
+            //= transformando em data Obj
+            d["date"] = parseTime(d["date"])
+        });
+    }
+   //console.log("filteredData ", filteredData);    
 
+    //= acabando de carregar os dados, chamar a função update para construi o gráfico de acordo com os selects e controles de GUI
+    update();
 });
+
+function update(dateLimits = $("#date-slider").slider("values"))
+{
+    var selectedCoin = $("#coin-select").val(),
+        selectedAttribute = $("#var-select").val();
+
+    //console.log("update - slider obj ", $("#date-slider").slider);
+   //console.log("update - selectedCoin ", selectedCoin);
+   //console.log("update - selectedAttribute ", selectedAttribute);
+   //console.log("update - dateLimits ", dateLimits);
+   //console.log("update - filteredData ", filteredData);
+    var dataTimeFiltered = filteredData[selectedCoin].filter(function(d){
+        return (d.date >= dateLimits[0] && d.date <= dateLimits[1]);
+    });
+   //console.log("dataTimeFiltered", dataTimeFiltered)
+
+    x.domain(d3.extent(dataTimeFiltered, function(d){ return d.date; }));
+    y.domain([d3.min(dataTimeFiltered, function(d){ return d[selectedAttribute]; }) / 1.005, 
+        d3.max(dataTimeFiltered, function(d){ return d[selectedAttribute]; }) * 1.005]);
+
+    //+ só para tirar o G e por o B de billion
+    var formatSi = d3.format(".2s");
+    function formatAbbreviation(value) {
+      var s = formatSi(value);
+      switch (s[s.length - 1]) {
+        case "G": return s.slice(0, -1) + "B";
+        case "k": return s.slice(0, -1) + "K";
+      }
+      return s;
+    }
+
+    // Update axes
+    xAxisCall.scale(x);
+    xAxis.transition(t()).call(xAxisCall);
+    yAxisCall.scale(y);
+    yAxis.transition(t()).call(yAxisCall.tickFormat(formatAbbreviation));
+
+    //+ tooltip updating
+    function onMousemove() {
+        
+        var x0 = x.invert(d3.mouse(this)[0]),
+            i = bisectDate(dataTimeFiltered, x0, 1),
+            d0 = dataTimeFiltered[i - 1],
+            d1 = dataTimeFiltered[i],
+            d = x0 - d0.date > d1.date - x0 ? d1 : d0;
+        focus.attr("transform", "translate(" + x(d.date) + "," + y(d[selectedAttribute]) + ")");
+        focus.select("text").text(function() { return d3.format("$,")(d[selectedAttribute].toFixed(2)); });
+        focus.select(".x-hover-line").attr("y2", height - y(d[selectedAttribute]));
+        focus.select(".y-hover-line").attr("x2", -x(d.date));
+
+        //console.log("x0", x0);
+        //console.log("i", i);
+        //console.log("d0", d0);
+        //console.log("d1", d1);
+    }
+   //console.log("before updating");
+    overlay.on("mousemove", null);
+    overlay.on("mousemove", onMousemove);
+
+    line = d3.line()
+        .x(function(d){ return x(d.date);    })
+        .y(function(d){ return y(d[selectedAttribute]);    })
+
+    g.select(".line")
+        .transition(t)
+        .attr("d", line(dataTimeFiltered));
+
+    
+
+}
 
