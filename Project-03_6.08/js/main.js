@@ -18,7 +18,7 @@ var g = svg.append("g")
 
 // Time parser for x-scale
 var parseTime = d3.timeParse("%d/%m/%Y");
-var formatTime = d3.formatParse("%d/%m/%Y");
+var timeFormat = d3.timeFormat("%d/%m/%Y");
 // For tooltip
 var bisectDate = d3.bisector(function(d) { return d.year; }).left;
 
@@ -55,16 +55,19 @@ var line = d3.line()
     .y(function(d) { return y(d.value); });
 
 d3.json("data/coins.json").then(function(data) {
-    console.log("data", data);
+    console.log("data ", data);
     // Data cleaning
     filteredData = {};
     for (const coin in data) {
+        //! Usado para evitar criar uma propriedade que não exitia antes
+        //= hasOwnProperty retorna true se o obj possui a propriedade passada como parâmetro (exceto herdada, como toString) 
         if (data.hasOwnProperty(coin)) {
             const element = data[coin];
             
         }
+        else{console.error("then(function(data) - propriedade inválida", coin)}
     }
-    console.log("data", filteredData);
+    console.log("filteredData ", filteredData);
     // Set scale domains
     x.domain(d3.extent(data, function(d) { return d.year; }));
     y.domain([d3.min(data, function(d) { return d.value; }) / 1.005, 
